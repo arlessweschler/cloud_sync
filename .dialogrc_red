@@ -30,7 +30,7 @@ use_shadow = ON
 use_colors = ON
 
 # Screen color
-screen_color = (CYAN,RED,ON)
+screen_color = (YELLOW,RED,ON)
 
 # Shadow color
 shadow_color = (BLACK,BLACK,ON)
@@ -39,7 +39,7 @@ shadow_color = (BLACK,BLACK,ON)
 dialog_color = (BLACK,WHITE,OFF)
 
 # Dialog box title color
-title_color = (BLUE,WHITE,ON)
+title_color = (RED,WHITE,ON)
 
 # Dialog box border color
 border_color = (WHITE,WHITE,ON)
