@@ -48,33 +48,14 @@ MESSAGES=""
 # load user config file
 source ${WORKDIR}/cloud_sync.ini
 
+
+#load functions
+source ${WORKDIR}/_functions.sh
+
 ####################
 # DIALOG FUNCTIONS #
 ####################
 
-# prepare console with custom settings
-function setConsole () {
-	# set bigger font
-	setfont ${CUSTOMFONT}
-}
-
-# reset console to default settings
-function resetConsole() {
-	# reset the default font
-	setfont ${DEFAULTFONT}
-	
-	export DIALOGRC=
-
-	# clear the screen
-	clear
-}
-
-# set the DIALOGRC file
-# INPUTS
-#	1	> color
-function setDRC() {
-	export DIALOGRC=${WORKDIR}/.dialogrc_$1
-}
 
 # update INFOBOX with message (stays on screen until overwritten or cleared)
 # INPUTS
@@ -85,6 +66,7 @@ function updateInfobox() {
 	dialog \
 		--stdout \
 		--colors \
+		--keep-tite \
 		--backtitle "${BACKTITLE}" \
 		--title "${TITLE}" \
 		--ok-label "Back" \
@@ -101,6 +83,7 @@ function updatePause() {
 	dialog \
 		--stdout \
 		--colors \
+		--keep-tite \
 		--backtitle "${BACKTITLE}" \
 		--title "${TITLE}" \
 		--ok-label "OK" \
@@ -174,26 +157,40 @@ function downloadSaves() {
 
 	updateInfobox "Checking Internet access... "
 	
+	# check for Internet access, abort if disconnected
 	checkInternet
 	if [[ $? -ne 0 ]]
 	then
 		setDRC "red"
-		updatePause "${RED}ERROR${NORMAL}" ${TIMEOUT_ERROR}
+		updatePause "${RED}ERROR${NORMAL}\n\nYou seem to be disconnected. Could not sync!" ${TIMEOUT_ERROR}
 		exitMenu
 	fi
 	updateInfobox "${GREEN}OK${NORMAL}"
 	
+	# check remote for existing files, WARNING if none found
 	updateInfobox "\nListing remote files (${REMOTETYPE})... "
-	#LISTSRM=$(rclone lsf retropie:Savegames/RetroArch/${SYSTEM} --include "${FILTER}.srm" | grep -c "^")
-	#LISTSTATE=$(rclone lsf retropie:Savegames/RetroArch/${SYSTEM} --include "${FILTER}.state*" | grep -c "^")
-	
-	LISTFILES=$(rclone lsf retropie:Savegames/RetroArch/${SYSTEM} --include "${FILTER}.*")
+	LISTFILES=$(rclone lsf retropie:${REMOTEBASEDIR}/${SYSTEM} --include "${FILTER}.*")
 	COUNTSRM=$(echo -n "${LISTFILES}" | grep -c "^.*\.srm")
 	COUNTSTATE=$(echo -n "${LISTFILES}" | grep -c "^.*\.state.*")
 	
 	if [ "${COUNTSRM}" -gt 0 -o "${COUNTSTATE}" -gt 0 ]
 	then
 		updateInfobox "${GREEN}OK${NORMAL}\nFound ${COUNTSRM} battery save(s) and ${COUNTSTATE} save state(s)"
+		
+		# download files, show result, start game
+		updateInfobox "\nDownloading save(s) and state(s)... "
+		rclone copy retropie:${REMOTEBASEDIR}/${SYSTEM} ${LOCALBASEDIR}/${SYSTEM} --include "${FILTER}.*" --update
+		retval=$?
+		if [ "${retval}" == "0" ]
+		then
+			setDRC "green"
+			updatePause "${GREEN}OK${NORMAL}\n\nStarting game..." ${TIMEOUT_OK}
+			exitMenu
+		else
+			setDRC "red"
+			updatePause "${RED}ERROR${NORMAL}\n\nStarting game..." ${TIMEOUT_ERROR}
+			exitMenu
+		fi
 	else
 		setDRC "yellow"
 		updatePause "${YELLOW}WARNING${NORMAL}\nNo remote files found" ${TIMEOUT_ERROR}
