@@ -10,16 +10,6 @@ EMULATOR="$3"
 ROM="$4"
 COMMAND="$5"
 
-#########
-# DEBUG #
-#########
-
-SYSTEM="snes"
-EMULATOR="lr-snes9x"
-ROM="/home/pi/RetroPie/roms/snes/Legend of Zelda, The - A Link to the Past (Germany).zip"
-COMMAND="/opt/retropie/emulators/retroarch/bin/retroarch -L /opt/retropie/libretrocores/lr-snes9x/snes9x_libretro.so --config /opt/retropie/configs/snes/retroarch.cfg \"/home/pi/RetroPie/roms/snes/Legend of Zelda, The - A Link to the Past (Germany).zip\""
-
-
 ########################
 # VARIABLE DEFINITIONS #
 ########################
@@ -151,20 +141,60 @@ function prepareFilter() {
 	FILTER="${FILTER//\]/\\]}"
 }
 
+function prepareLocalDirectories() {
+	if [ "${USECUSTOMLOCALBASEDIR}" == "ON" ]
+	then
+		TITLE="Preparing"
+		
+		updateInfobox "Checking local base directory... "
+		createCustomLocalBaseDir
+		case "$?" in
+			0) updateInfobox "${GREEN}OK, created${NORMAL}\n"  ;;
+			1) updateInfobox "${GREEN}OK, exists${NORMAL}\n"  ;;
+		esac
+		
+		updateInfobox "Checking local system directory... "
+		createCustomLocalSystemDir
+		case "$?" in
+			0) updateInfobox "${GREEN}OK, created${NORMAL}\n"  ;;
+			1) updateInfobox "${GREEN}OK, exists${NORMAL}\n"  ;;
+		esac
+		
+		LOCALDIRECTORY="${CUSTOMLOCALBASEDIR}/${SYSTEM}"
+		REMOTEDIRECTORY="${REMOTEBASEDIR}/${SYSTEM}"
+	else
+		LOCALDIRECTORY="${ROMPATH}"
+		REMOTEDIRECTORY="${REMOTEBASEDIR}/${SYSTEM}"
+	fi
+}
+
+function prepareRetroArchConfig() {
+	if [ "${USECUSTOMLOCALBASEDIR}" == "ON" ]
+	then
+		updateRetroArchConfig "${SYSTEM}" "savefile_directory" "${LOCALDIRECTORY}"
+		updateRetroArchConfig "${SYSTEM}" "savestate_directory" "${LOCALDIRECTORY}"
+	else
+		updateRetroArchConfig "${SYSTEM}" "savefile_directory" "${LOCALDIRECTORY}"
+		updateRetroArchConfig "${SYSTEM}" "savestate_directory" "${LOCALDIRECTORY}"
+	fi
+}
+
 function downloadSaves() {
 	TITLE="Downloading"
-	MESSAGES="Downloading saves and states for:\n${ROMBASE}\n\n"
+	updateInfobox "Downloading saves and states for:\n${ROMBASE}\n\n"
 
+	# check for Internet access, abort if disconnected
 	updateInfobox "Checking Internet access... "
 	
-	# check for Internet access, abort if disconnected
 	checkInternet
 	if [[ $? -ne 0 ]]
 	then
+		log 2 "No Internet access"
 		setDRC "red"
 		updatePause "${RED}ERROR${NORMAL}\n\nYou seem to be disconnected. Could not sync!" ${TIMEOUT_ERROR}
 		exitMenu
 	fi
+	log 2 "Internet accessible"
 	updateInfobox "${GREEN}OK${NORMAL}"
 	
 	# check remote for existing files, WARNING if none found
@@ -175,14 +205,16 @@ function downloadSaves() {
 	
 	if [ "${COUNTSRM}" -gt 0 -o "${COUNTSTATE}" -gt 0 ]
 	then
+		log 2 "Found remote files: ${COUNTSRM} battery save(s) and ${COUNTSTATE} save state(s)"
 		updateInfobox "${GREEN}OK${NORMAL}\nFound ${COUNTSRM} battery save(s) and ${COUNTSTATE} save state(s)"
 		
 		# download files, show result, start game
-		updateInfobox "\nDownloading save(s) and state(s)... "
-		rclone copy retropie:${REMOTEBASEDIR}/${SYSTEM} ${LOCALBASEDIR}/${SYSTEM} --include "${FILTER}.*" --update
+		updateInfobox "\nDownloading save(s) and state(s) to ${LOCALDIRECTORY}... "
+		rclone copy "retropie:${REMOTEDIRECTORY}" "${LOCALDIRECTORY}" --include "${FILTER}.*" --update
 		retval=$?
 		if [ "${retval}" == "0" ]
 		then
+			log 2 "Download successful"
 			setDRC "green"
 			updatePause "${GREEN}OK${NORMAL}\n\nStarting game..." ${TIMEOUT_OK}
 			exitMenu
@@ -192,6 +224,7 @@ function downloadSaves() {
 			exitMenu
 		fi
 	else
+		log 2 "No remote files found"
 		setDRC "yellow"
 		updatePause "${YELLOW}WARNING${NORMAL}\nNo remote files found" ${TIMEOUT_ERROR}
 		exitMenu
@@ -201,7 +234,6 @@ function downloadSaves() {
 	updatePause "" ${TIMEOUT_ERROR}
 	mainMenu
 }
-
 
 function exitMenu () {
 	resetConsole
@@ -214,41 +246,27 @@ function exitMenu () {
 # MAIN LOOP #
 #############
 
-function mainMenu () {
-	while true
-	do
-		CHOICE=$(dialog \
-			--stdout \
-			--colors \
-			--backtitle "${BACKTITLE}" \
-			--title "main Menu" \
-			--ok-label "OK" \
-			--cancel-label "Exit" \
-			--menu "What to do?" 25 75 20 \
-				1 "downloadSaves OK" \
-				2 "downloadSaves ERROR"
-		)
-		
-		case "${CHOICE}" in
-			1) 
-				getTypeOfRemote
-				splitPath
-				prepareFilter
-				downloadSaves  
-				;;
-			2) 
-				ROM="/home/pi/RetroPie/roms/snes/Ich bin grandioser Blödsinn.zip"
-				getTypeOfRemote
-				splitPath
-				prepareFilter
-				downloadSaves  
-				;;
-			*) 
-				exitMenu  
-				;;
-		esac
-	done
+function main() {
+	log 2 "Started main()"
+	log 2 "DIRECTION: ${DIRECTION}"
+	log 2 "SYSTEM: ${SYSTEM}"
+	log 2 "ROM: ${ROM}"
+	MESSAGES=""
+
+	getTypeOfRemote
+	splitPath
+	prepareFilter
+	
+	prepareLocalDirectories
+	prepareRetroArchConfig
+	
+	if [ "${DIRECTION}" ==  "DOWN" ]
+	then
+		downloadSaves
+	fi
+	
+	log 2 "Ended main()"
 }
 
 setConsole
-mainMenu
+main

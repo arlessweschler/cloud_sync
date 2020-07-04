@@ -52,10 +52,12 @@ function mainMenu() {
 			--default-item "${mmCHOICE}" \
 			--menu "Configuration" 25 75 20 \
 				1 "Sync on start/stop:	${tDOSYNC}" \
-				2 "Timeout on OK:		${TIMEOUT_OK}" \
-				3 "Timeout on ERROR:		${TIMEOUT_ERROR}" \
-				4 "Use custom font:		${tUSECUSTOMFONT}" \
-				5 "Custom font:	 	${CUSTOMFONT}"
+				2 "Use custom local dir:	${tUSECUSTOMLOCALBASEDIR}" \
+				3 "Custom local dir:		${CUSTOMLOCALBASEDIR}" \
+				4 "Timeout on OK:		${TIMEOUT_OK}" \
+				5 "Timeout on ERROR:		${TIMEOUT_ERROR}" \
+				6 "Use custom font:		${tUSECUSTOMFONT}" \
+				7 "Custom font:	 	${CUSTOMFONT}"
 		)
 		
 		ret=$?
@@ -66,10 +68,12 @@ function mainMenu() {
 		
 		case "${mmCHOICE}" in
 			1) toggleDOSYNC  ;;
-			2) setTIMEOUT_OK  ;;
-			3) setTIMEOUT_ERROR  ;;
-			4) toggleUSECUSTOMFONT  ;;
-			5) selectCUSTOMFONT  ;;
+			2) toggleUSECUSTOMLOCALBASEDIR  ;;
+			3) setCUSTOMLOCALBASEDIR  ;;
+			4) setTIMEOUT_OK  ;;
+			5) setTIMEOUT_ERROR  ;;
+			6) toggleUSECUSTOMFONT  ;;
+			7) selectCUSTOMFONT  ;;
 			*) exitMenu  ;;
 		esac
 	done
@@ -81,6 +85,13 @@ function prepareToggles() {
 		tDOSYNC=${GREEN}ON${NORMAL}
 	else
 		tDOSYNC=${RED}OFF${NORMAL}
+	fi
+	
+	if [ "${USECUSTOMLOCALBASEDIR}" == "ON" ]
+	then
+		tUSECUSTOMLOCALBASEDIR=${GREEN}ON${NORMAL}
+	else
+		tUSECUSTOMLOCALBASEDIR=${RED}OFF${NORMAL}
 	fi
 	
 	if [ "${USECUSTOMFONT}" == "ON" ]
@@ -113,6 +124,17 @@ function toggleDOSYNC() {
 		DOSYNC=OFF
 	else
 		DOSYNC=ON
+	fi
+	
+	mainMenu
+}
+
+function toggleUSECUSTOMLOCALBASEDIR() {
+	if [ "${USECUSTOMLOCALBASEDIR}" == "ON" ]
+	then
+		USECUSTOMLOCALBASEDIR=OFF
+	else
+		USECUSTOMLOCALBASEDIR=ON
 	fi
 	
 	mainMenu
@@ -193,11 +215,15 @@ USECUSTOMFONT=${USECUSTOMFONT}
 CUSTOMFONT=${CUSTOMFONT}
 DEFAULTFONT=${DEFAULTFONT}
 
-LOCALBASEDIR=${LOCALBASEDIR}
+USECUSTOMLOCALBASEDIR=${USECUSTOMLOCALBASEDIR}
+CUSTOMLOCALBASEDIR=${CUSTOMLOCALBASEDIR}
 REMOTEBASEDIR=${REMOTEBASEDIR}
 
 TIMEOUT_OK=${TIMEOUT_OK}
-TIMEOUT_ERROR=${TIMEOUT_ERROR}"
+TIMEOUT_ERROR=${TIMEOUT_ERROR}
+
+logLevel=${logLevel}
+logFile=${logFile}"
 
 	echo "${settings}" > ${WORKDIR}/cloud_sync.ini
 }
