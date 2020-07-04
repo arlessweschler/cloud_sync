@@ -45,7 +45,10 @@ function mainMenu() {
 			--keep-tite \
 			--backtitle "${BACKTITLE}" \
 			--title "${TITLE}" \
-			--cancel-label "Exit" \
+			--ok-label "Set / Toggle" \
+			--extra-button \
+			--extra-label "Save" \
+			--cancel-label "Cancel" \
 			--default-item "${mmCHOICE}" \
 			--menu "Configuration" 25 75 20 \
 				1 "Sync on start/stop:	${tDOSYNC}" \
@@ -54,6 +57,12 @@ function mainMenu() {
 				4 "Use custom font:		${tUSECUSTOMFONT}" \
 				5 "Custom font:	 	${CUSTOMFONT}"
 		)
+		
+		ret=$?
+		if [ "${ret}" == "3" ]
+		then
+			exitWithSave
+		fi
 		
 		case "${mmCHOICE}" in
 			1) toggleDOSYNC  ;;
@@ -80,6 +89,12 @@ function prepareToggles() {
 	else
 		tUSECUSTOMFONT=${RED}OFF${NORMAL}
 	fi
+}
+
+function exitWithSave() {
+	resetConsole
+	saveSettings
+	exit
 }
 
 function exitMenu() {
@@ -171,6 +186,21 @@ function selectCUSTOMFONT() {
 	fi
 }
 
+function saveSettings() {
+	settings="DOSYNC=${DOSYNC}
+
+USECUSTOMFONT=${USECUSTOMFONT}
+CUSTOMFONT=${CUSTOMFONT}
+DEFAULTFONT=${DEFAULTFONT}
+
+LOCALBASEDIR=${LOCALBASEDIR}
+REMOTEBASEDIR=${REMOTEBASEDIR}
+
+TIMEOUT_OK=${TIMEOUT_OK}
+TIMEOUT_ERROR=${TIMEOUT_ERROR}"
+
+	echo "${settings}" > ${WORKDIR}/cloud_sync.ini
+}
 
 #############
 # MAIN LOOP #
