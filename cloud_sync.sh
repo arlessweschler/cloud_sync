@@ -29,7 +29,7 @@ REVERSE="\Zr"
 UNDERLINE="\Zu"
 
 # script variables
-WORKDIR="$(pwd)"
+WORKDIR="$(dirname "$0")"
 TITLE="Cloud Sync"
 BACKTITLE="Cloud Sync (https://github.com/Jandalf81/cloud_sync)"
 LOGFILE=/dev/shm/cloud_sync.log
@@ -181,7 +181,7 @@ function prepareRetroArchConfig() {
 
 function downloadSaves() {
 	TITLE="Downloading"
-	updateInfobox "Downloading saves and states for:\n${ROMBASE}\n\n"
+	updateInfobox "\nDownloading saves and states for:\n${ROMBASE}\n\n"
 
 	# check for Internet access, abort if disconnected
 	updateInfobox "Checking Internet access... "
@@ -219,6 +219,7 @@ function downloadSaves() {
 			updatePause "${GREEN}OK${NORMAL}\n\nStarting game..." ${TIMEOUT_OK}
 			exitMenu
 		else
+			log 0 "ERROR while downloading!"
 			setDRC "red"
 			updatePause "${RED}ERROR${NORMAL}\n\nStarting game..." ${TIMEOUT_ERROR}
 			exitMenu
@@ -230,9 +231,63 @@ function downloadSaves() {
 		exitMenu
 	fi
 	
+	updatePause "" ${TIMEOUT_ERROR}
+}
+
+function uploadSaves() {
+	TITLE="Uploading"
+	updateInfobox "\nUploading saves and states for:\n${ROMBASE}\n\n"
+
+	# check for Internet access, abort if disconnected
+	updateInfobox "Checking Internet access... "
+	
+	checkInternet
+	if [[ $? -ne 0 ]]
+	then
+		log 2 "No Internet access"
+		setDRC "red"
+		updatePause "${RED}ERROR${NORMAL}\n\nYou seem to be disconnected. Could not sync!" ${TIMEOUT_ERROR}
+		exitMenu
+	fi
+	log 2 "Internet accessible"
+	updateInfobox "${GREEN}OK${NORMAL}\n"
+	
+	# check local dir for existing files
+	updateInfobox "Listing local files... "
+	LISTFILES=$(find "${LOCALDIRECTORY}" -type f -iname "${FILTER}.*")
+	COUNTSRM=$(echo -n "${LISTFILES}" | grep -c "^.*\.srm")
+	COUNTSTATE=$(echo -n "${LISTFILES}" | grep -c "^.*\.state.*")
+	
+	if [ "${COUNTSRM}" -gt 0 -o "${COUNTSTATE}" -gt 0 ]
+	then
+		log 2 "Found local files: ${COUNTSRM} battery save(s) and ${COUNTSTATE} save state(s)"
+		updateInfobox "${GREEN}OK${NORMAL}\nFound ${COUNTSRM} battery save(s) and ${COUNTSTATE} save state(s)\n"
+		
+		# upload files, show result, start game
+		updateInfobox "Uploading save(s) and state(s) to ${REMOTEDIRECTORY}... "
+		rclone copy "${LOCALDIRECTORY}" "retropie:${REMOTEDIRECTORY}" --include "${FILTER}.*" --update
+		
+		retval=$?
+		if [ "${retval}" == "0" ]
+		then
+			log 2 "Upload successful"
+			setDRC "green"
+			updatePause "${GREEN}OK${NORMAL}\n\nStarting game..." ${TIMEOUT_OK}
+			exitMenu
+		else
+			log 0 "ERROR while downloading!"
+			setDRC "red"
+			updatePause "${RED}ERROR${NORMAL}\n\nExitting game..." ${TIMEOUT_ERROR}
+			exitMenu
+		fi
+	else
+		log 2 "No local files found"
+		setDRC "yellow"
+		updatePause "${YELLOW}WARNING${NORMAL}\nNo local files found" ${TIMEOUT_ERROR}
+		exitMenu
+	fi
 	
 	updatePause "" ${TIMEOUT_ERROR}
-	mainMenu
 }
 
 function exitMenu () {
@@ -263,6 +318,11 @@ function main() {
 	if [ "${DIRECTION}" ==  "DOWN" ]
 	then
 		downloadSaves
+	fi
+	
+	if [ "${DIRECTION}" ==  "UP" ]
+	then
+		uploadSaves
 	fi
 	
 	log 2 "Ended main()"

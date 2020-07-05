@@ -19,9 +19,9 @@ REVERSE="\Zr"
 UNDERLINE="\Zu"
 
 # script variables
-WORKDIR="$(pwd)"
+WORKDIR="$(dirname "$0")"
 TITLE="Cloud Sync Menu"
-BACKTITLE="Cloud Sync (https://github.com/Jandalf81/cloud_sync)"
+BACKTITLE="Cloud Sync (https://github.com/Jandalf81/cloud_sync) ${WORKDIR}"
 
 # load user config file
 source ${WORKDIR}/cloud_sync.ini
